@@ -18,6 +18,9 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // ✅ Use env variable
+  const API_BASE = process.env.REACT_APP_API_URL;
+
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
     if (selected) {
@@ -53,7 +56,7 @@ const ResumeUpload = () => {
       const form = new FormData();
       form.append('resume', file);
 
-      const res = await fetch('http://localhost:5000/api/resume/upload', {
+      const res = await fetch(`${API_BASE}/api/upload`, {
         method: 'POST',
         body: form
       });
@@ -63,7 +66,6 @@ const ResumeUpload = () => {
         throw new Error(json.error || 'Server error during upload');
       }
 
-      // Expecting JSON fields: summary, skills, recommendations
       const { summary, skills, recommendations } = json.analysisData || json;
       setAnalysisData({ summary, skills, recommendations });
       setFile(null);
