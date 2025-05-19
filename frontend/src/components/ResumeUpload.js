@@ -18,26 +18,29 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Use env variable
-  const API_BASE = process.env.REACT_APP_API_URL;
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
     if (selected) {
       if (
-        !['application/pdf',
+        ![
+          'application/pdf',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         ].includes(selected.type)
       ) {
         setError('Invalid file type. Please upload a PDF or DOCX file.');
         setFile(null);
+        setAnalysisData(null);
       } else if (selected.size > 10 * 1024 * 1024) {
         setFileSizeError('File size exceeds the 10MB limit. Please upload a smaller file.');
         setFile(null);
+        setAnalysisData(null);
       } else {
         setFile(selected);
         setError(null);
         setFileSizeError(null);
+        setAnalysisData(null);
       }
     }
   };
@@ -56,21 +59,29 @@ const ResumeUpload = () => {
       const form = new FormData();
       form.append('resume', file);
 
-      const res = await fetch(`${API_BASE}/api/upload`, {
+      const res = await fetch(`${API_BASE}/api/resume/upload`, {
         method: 'POST',
         body: form
       });
-      const json = await res.json();
+
+      const text = await res.text();
 
       if (!res.ok) {
-        throw new Error(json.error || 'Server error during upload');
+        throw new Error(`Server error ${res.status}: ${text}`);
+      }
+
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (parseError) {
+        throw new Error('Invalid JSON response from server.');
       }
 
       const { summary, skills, recommendations } = json.analysisData || json;
       setAnalysisData({ summary, skills, recommendations });
       setFile(null);
     } catch (err) {
-      console.error(err);
+      console.error('Upload error:', err);
       setError(err.message || 'Upload failed');
     } finally {
       setIsUploading(false);
@@ -95,10 +106,11 @@ const ResumeUpload = () => {
       </Typography>
 
       <input
+        id="resume-upload"
         type="file"
         onChange={handleFileChange}
         disabled={isUploading}
-        aria-label="Upload resume"
+        aria-label="Upload resume file"
         style={{
           padding: '10px',
           backgroundColor: 'white',
