@@ -1,3 +1,4 @@
+// frontend/src/components/ResumeUpload.js
 import React, { useState } from 'react';
 import {
   Button,
@@ -18,31 +19,36 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // This should point at your Node backend!!
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
-    if (selected) {
-      if (
-        ![
-          'application/pdf',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ].includes(selected.type)
-      ) {
-        setError('Invalid file type. Please upload a PDF or DOCX file.');
-        setFile(null);
-        setAnalysisData(null);
-      } else if (selected.size > 10 * 1024 * 1024) {
-        setFileSizeError('File size exceeds the 10MB limit. Please upload a smaller file.');
-        setFile(null);
-        setAnalysisData(null);
-      } else {
-        setFile(selected);
-        setError(null);
-        setFileSizeError(null);
-        setAnalysisData(null);
-      }
+    if (!selected) return;
+
+    if (
+      ![
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ].includes(selected.type)
+    ) {
+      setError('Invalid file type. Please upload a PDF or DOCX file.');
+      setFile(null);
+      setAnalysisData(null);
+      return;
     }
+
+    if (selected.size > 10 * 1024 * 1024) {
+      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.');
+      setFile(null);
+      setAnalysisData(null);
+      return;
+    }
+
+    setFile(selected);
+    setError(null);
+    setFileSizeError(null);
+    setAnalysisData(null);
   };
 
   const handleUpload = async () => {
@@ -57,15 +63,15 @@ const ResumeUpload = () => {
 
     try {
       const form = new FormData();
-      form.append('resume', file);
+      form.append('resume', file);  // <-- must match multer’s upload.single('resume')
 
-      const res = await fetch(`${API_BASE}/api/resume/upload`, {
+      // ⚠️ Note the URL here: /api/analyze
+      const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: form
       });
 
       const text = await res.text();
-
       if (!res.ok) {
         throw new Error(`Server error ${res.status}: ${text}`);
       }
@@ -73,12 +79,12 @@ const ResumeUpload = () => {
       let json;
       try {
         json = JSON.parse(text);
-      } catch (parseError) {
+      } catch {
         throw new Error('Invalid JSON response from server.');
       }
 
-      const { summary, skills, recommendations } = json.analysisData || json;
-      setAnalysisData({ summary, skills, recommendations });
+      // Flask returns { summary, skills, recommendations }
+      setAnalysisData(json);
       setFile(null);
     } catch (err) {
       console.error('Upload error:', err);
@@ -110,14 +116,13 @@ const ResumeUpload = () => {
         type="file"
         onChange={handleFileChange}
         disabled={isUploading}
-        aria-label="Upload resume file"
         style={{
           padding: '10px',
           backgroundColor: 'white',
           borderRadius: 8,
           border: '1px solid #ccc',
           marginBottom: 20,
-          cursor: 'pointer'
+          cursor: isUploading ? 'not-allowed' : 'pointer'
         }}
       />
 
@@ -146,7 +151,8 @@ const ResumeUpload = () => {
           py: 1.5,
           borderRadius: 2,
           backgroundColor: '#007BFF',
-          '&:hover': { backgroundColor: '#0056b3' }
+          '&:hover': { backgroundColor: '#0056b3' },
+          mb: 2
         }}
       >
         {isUploading ? 'Uploading...' : 'Upload Resume'}
