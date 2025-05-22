@@ -1,5 +1,5 @@
 // frontend/src/components/ResumeUpload.js
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import {
   Button,
   Typography,
@@ -9,22 +9,22 @@ import {
   CircularProgress,
   Paper,
   Divider
-} from '@mui/material';
+} from '@mui/material'
 
 const ResumeUpload = () => {
-  const [file, setFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState(null);
-  const [fileSizeError, setFileSizeError] = useState(null);
-  const [analysisData, setAnalysisData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [file, setFile] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState(null)
+  const [fileSizeError, setFileSizeError] = useState(null)
+  const [analysisData, setAnalysisData] = useState(null)
+  const [loading, setLoading] = useState(false)
 
-  // This should point at your Node backend!!
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  // Point this at your backend's base URL
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000'
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files[0];
-    if (!selected) return;
+  const handleFileChange = e => {
+    const selected = e.target.files[0]
+    if (!selected) return
 
     if (
       ![
@@ -32,68 +32,68 @@ const ResumeUpload = () => {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       ].includes(selected.type)
     ) {
-      setError('Invalid file type. Please upload a PDF or DOCX file.');
-      setFile(null);
-      setAnalysisData(null);
-      return;
+      setError('Invalid file type. Please upload a PDF or DOCX file.')
+      setFile(null)
+      setAnalysisData(null)
+      return
     }
 
     if (selected.size > 10 * 1024 * 1024) {
-      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.');
-      setFile(null);
-      setAnalysisData(null);
-      return;
+      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.')
+      setFile(null)
+      setAnalysisData(null)
+      return
     }
 
-    setFile(selected);
-    setError(null);
-    setFileSizeError(null);
-    setAnalysisData(null);
-  };
+    setFile(selected)
+    setError(null)
+    setFileSizeError(null)
+    setAnalysisData(null)
+  }
 
   const handleUpload = async () => {
     if (!file) {
-      setError('Please select a resume file first');
-      return;
+      setError('Please select a resume file first')
+      return
     }
 
-    setIsUploading(true);
-    setLoading(true);
-    setError(null);
+    setIsUploading(true)
+    setLoading(true)
+    setError(null)
 
     try {
-      const form = new FormData();
-      form.append('resume', file);  // <-- must match multer’s upload.single('resume')
+      const form = new FormData()
+      form.append('resume', file) // matches upload.single('resume')
 
-      // ⚠️ Note the URL here: /api/analyze
+      // 🔑 Here we call POST /api/analyze
       const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: form
-      });
+      })
 
-      const text = await res.text();
+      const text = await res.text()
       if (!res.ok) {
-        throw new Error(`Server error ${res.status}: ${text}`);
+        throw new Error(`Server error ${res.status}: ${text}`)
       }
 
-      let json;
+      let json
       try {
-        json = JSON.parse(text);
+        json = JSON.parse(text)
       } catch {
-        throw new Error('Invalid JSON response from server.');
+        throw new Error('Invalid JSON response from server.')
       }
 
       // Flask returns { summary, skills, recommendations }
-      setAnalysisData(json);
-      setFile(null);
+      setAnalysisData(json)
+      setFile(null)
     } catch (err) {
-      console.error('Upload error:', err);
-      setError(err.message || 'Upload failed');
+      console.error('Upload error:', err)
+      setError(err.message || 'Upload failed')
     } finally {
-      setIsUploading(false);
-      setLoading(false);
+      setIsUploading(false)
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Box
@@ -196,7 +196,7 @@ const ResumeUpload = () => {
         </Paper>
       )}
     </Box>
-  );
-};
+  )
+}
 
-export default ResumeUpload;
+export default ResumeUpload
