@@ -14,9 +14,11 @@ const port = process.env.PORT || 5000;
 // 1) CORS: allow ONLY your deployed frontend
 app.use(cors({
   origin: 'https://resume-analyzer-frontend.onrender.com',
-  methods: ['GET','POST'],
+  methods: ['GET','POST','OPTIONS'],
   allowedHeaders: ['Content-Type']
 }));
+// 1A) Preflight support
+app.options('*', cors());
 
 // 2) JSON body parsing
 app.use(express.json());
@@ -41,8 +43,8 @@ const upload = multer({
 });
 
 // 5) Health-check
-app.get('/api/test', (_, res) => {
-  res.json({ status:'API is running!' });
+app.get('/api/test', (req, res) => {
+  res.json({ status: 'OK' });
 });
 
 // 6) Analyze endpoint
