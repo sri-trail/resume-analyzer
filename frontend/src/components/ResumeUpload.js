@@ -65,7 +65,7 @@ const ResumeUpload = () => {
       const form = new FormData()
       form.append('resume', file) // matches upload.single('resume')
 
-      // 🔑 Here we call POST /api/analyze
+      // Call POST /api/analyze
       const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: form
@@ -83,7 +83,7 @@ const ResumeUpload = () => {
         throw new Error('Invalid JSON response from server.')
       }
 
-      // Flask returns { summary, skills, recommendations }
+      // Expected { summary, skills, recommendations }
       setAnalysisData(json)
       setFile(null)
     } catch (err) {
