@@ -20,7 +20,7 @@ const ResumeUpload = () => {
   const [loading, setLoading] = useState(false)
 
   // Point this at your backend's base URL
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000'
+  const API_BASE = process.env.REACT_APP_API_URL || 'https://resume-analyzer-backend-pcl8.onrender.com'
 
   const handleFileChange = e => {
     const selected = e.target.files[0]

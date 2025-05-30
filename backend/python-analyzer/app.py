@@ -1,57 +1,50 @@
-# backend/python-analyzer/app.py
+# app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import io, re, os, logging
-from pdfminer.high_level import extract_text
+import os
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # allow all origins; adjust if you need to lock down in prod
 
-# Silence PDFMiner debug/warning logs
-logging.getLogger('pdfminer').setLevel(logging.ERROR)
+@app.route('/')
+def home():
+    return {'message': 'Backend is live'}
 
-# Skill‐regex (as before)
-SKILL_REGEX = re.compile(
-    r'\b(?:Python|Java|JavaScript|C\+\+|React|Node\.js|SQL|HTML|CSS|Git|AWS|Docker|'
-    r'Kubernetes|TensorFlow|Pandas|Numpy|Matplotlib|Machine Learning|Data Analysis|'
-    r'Communication|Leadership|Teamwork)\b',
-    re.IGNORECASE
-)
-def extract_skills(text):
-    found = SKILL_REGEX.findall(text)
-    return sorted({s.title() for s in found})
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-@app.route('/analyze', methods=['POST'])
+@app.route('/', methods=['GET'])    
+def home():
+    return jsonify({'message': 'Flask Resume Analyzer is running.'}), 200
+
+@app.route('/api/analyze', methods=['POST'])
 def analyze_resume():
-    data = request.get_json()
-    if not data or 'resume' not in data:
-        return jsonify({'error': 'Missing "resume" field in JSON body'}), 400
+    # Expecting multipart/form-data with key 'resume'
+    if 'resume' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
 
-    resume_text = data['resume'].strip()
-    if not resume_text:
-        return jsonify({'error': 'Empty resume text provided'}), 400
+    f = request.files['resume']
+    if f.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
 
-    # Summary: first 250 chars
-    summary = resume_text[:250].rstrip() + ('...' if len(resume_text) > 250 else '')
+    # Save file (optional)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], f.filename)
+    f.save(filepath)
 
-    # Skills & Recommendations
-    skills = extract_skills(resume_text) or ["No specific skills detected."]
-    recommendations = [
-        "Add measurable achievements to your experience section.",
-        "Include a clear professional summary at the top.",
-        "Use keywords from the job description relevant to your target role."
-    ]
+    # Read a preview (first 200 chars) for testing
+    try:
+        content = f.read().decode('utf-8', errors='ignore')
+    except:
+        content = '<binary data>'
+    preview = content[:200]
 
     return jsonify({
-        'summary': summary,
-        'skills': skills,
-        'recommendations': recommendations
-    })
-
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'OK'})
+        'filename': f.filename,
+        'preview': preview
+    }), 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8001))
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+    app.run()
