@@ -19,8 +19,8 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // Point this at your backend's base URL
-  const API_BASE = process.env.REACT_APP_API_URL || 'https://resume-analyzer-backend-pcl8.onrender.com'
+  // Base URL from environment
+  const API_BASE = process.env.REACT_APP_API_URL
 
   const handleFileChange = e => {
     const selected = e.target.files[0]
@@ -63,27 +63,19 @@ const ResumeUpload = () => {
 
     try {
       const form = new FormData()
-      form.append('resume', file) // matches upload.single('resume')
+      form.append('resume', file)
 
-      // Call POST /api/analyze
       const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: form
       })
 
-      const text = await res.text()
+      const json = await res.json()
       if (!res.ok) {
-        throw new Error(`Server error ${res.status}: ${text}`)
+        throw new Error(json.error || `Server error ${res.status}`)
       }
 
-      let json
-      try {
-        json = JSON.parse(text)
-      } catch {
-        throw new Error('Invalid JSON response from server.')
-      }
-
-      // Expected { summary, skills, recommendations }
+      // Expecting { filename, preview }
       setAnalysisData(json)
       setFile(null)
     } catch (err) {
@@ -171,28 +163,11 @@ const ResumeUpload = () => {
           </Typography>
           <Divider sx={{ mb: 3 }} />
 
-          <Typography variant="h6">Summary:</Typography>
-          <Typography paragraph>
-            {analysisData.summary || 'No summary available.'}
-          </Typography>
+          <Typography variant="h6">Filename:</Typography>
+          <Typography paragraph>{analysisData.filename}</Typography>
 
-          <Typography variant="h6">Skills:</Typography>
-          {analysisData.skills?.length ? (
-            <ul>
-              {analysisData.skills.map((skill, i) => (
-                <li key={i}>
-                  <Typography>{skill}</Typography>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <Typography>No skills detected.</Typography>
-          )}
-
-          <Typography variant="h6">Recommendations:</Typography>
-          <Typography paragraph>
-            {analysisData.recommendations || 'No recommendations available.'}
-          </Typography>
+          <Typography variant="h6">Preview:</Typography>
+          <Typography paragraph>{analysisData.preview || 'No preview available.'}</Typography>
         </Paper>
       )}
     </Box>
