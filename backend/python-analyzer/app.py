@@ -1,20 +1,16 @@
-# app.py
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
+from pdfminer.high_level import extract_text
 
 app = Flask(__name__)
-CORS(app)  # allow all origins; adjust if you need to lock down in prod
-
-@app.route('/')
-def home():
-    return {'message': 'Backend is live'}
+CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-@app.route('/', methods=['GET'])    
+@app.route('/', methods=['GET'])
 def home():
     return jsonify({'message': 'Flask Resume Analyzer is running.'}), 200
 
@@ -29,22 +25,19 @@ def analyze_resume():
         return jsonify({'error': 'No selected file'}), 400
 
     # Save file (optional)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], f.filename)
-    f.save(filepath)
+    # filepath = os.path.join(app.config['UPLOAD_FOLDER'], f.filename)
+    # f.save(filepath)
 
-    # Read a preview (first 200 chars) for testing
+    # Extract text
     try:
-        content = f.read().decode('utf-8', errors='ignore')
-    except:
-        content = '<binary data>'
-    preview = content[:200]
+        text = extract_text(f.stream)
+    except Exception:
+        return jsonify({'error': 'Failed to extract text'}), 500
 
-    return jsonify({
-        'filename': f.filename,
-        'preview': preview
-    }), 200
+    # Return a simple preview + mock analysis
+    preview = text[:200]
+    return jsonify({'filename': f.filename, 'preview': preview}), 200
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-    app.run()
