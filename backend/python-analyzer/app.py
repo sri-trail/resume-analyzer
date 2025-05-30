@@ -37,6 +37,10 @@ def analyze_resume():
     # Return a simple preview + mock analysis
     preview = text[:200]
     return jsonify({'filename': f.filename, 'preview': preview}), 200
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'OK'}), 200
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
