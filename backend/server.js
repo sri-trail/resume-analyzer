@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const cors = require('cors');
-const { Configuration, OpenAIApi } = require('openai');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -40,35 +40,34 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// 5. OpenAI config
-const openai = new OpenAIApi(new Configuration({
-  apiKey: process.env.OPENAI_API_KEY
-}));
-
-// 6. Health-check
+// 5. Health-check
 app.get('/api/test', (_, res) => {
   res.json({ status: 'OK' });
 });
 
-// 7. Analyze resume and get AI feedback
+// 6. Analyze resume and get AI feedback via Hugging Face DeepSeek
 app.post('/api/analyze', upload.single('resume'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
   try {
     const buffer = await fs.promises.readFile(req.file.path);
     const { text } = await pdfParse(buffer);
-    const preview = text.trim().substring(0, 1000);
+    const preview = text.trim().substring(0, 1000); // Hugging Face input limit safety
 
-    const completion = await openai.createChatCompletion({
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: 'You are a professional resume reviewer.' },
-        { role: 'user', content: `Here is a resume:\n\n${preview}\n\nProvide feedback on how to improve it.` }
-      ],
-      temperature: 0.7
-    });
+    const prompt = `You are a professional resume reviewer. Give clear and constructive feedback on the following resume:\n\n${preview}`;
 
-    const feedback = completion.data.choices[0].message.content;
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528',
+      { inputs: prompt },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`
+        },
+        timeout: 60000 // 60 seconds
+      }
+    );
+
+    const feedback = response.data.generated_text || response.data[0]?.generated_text || 'No feedback generated';
 
     res.json({
       filename: req.file.originalname,
@@ -77,17 +76,17 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Analysis failed:', err);
+    console.error('Analysis failed:', err.message);
     res.status(500).json({ error: 'Analysis failed', details: err.message });
   }
 });
 
-// 8. Error handling
+// 7. Error handling
 app.use((req, res) => res.status(404).json({ error: 'Endpoint not found' }));
 app.use((err, _, res, __) => {
   console.error('Server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// 9. Start server
+// 8. Start server
 app.listen(port, () => console.log(`🚀 Backend running on port ${port}`));
