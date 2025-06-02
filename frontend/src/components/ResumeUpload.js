@@ -18,12 +18,14 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Get backend URL from environment variable
   const API_BASE = process.env.REACT_APP_API_URL
 
   const handleFileChange = e => {
     const selected = e.target.files[0]
     if (!selected) return
 
+    // Validate file type
     if (
       !['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(selected.type)
     ) {
@@ -33,6 +35,7 @@ const ResumeUpload = () => {
       return
     }
 
+    // Validate file size (max 10MB)
     if (selected.size > 10 * 1024 * 1024) {
       setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.')
       setFile(null)

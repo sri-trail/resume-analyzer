@@ -25,7 +25,7 @@ app.use(express.json());
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// 4. Multer
+// 4. Multer setup for file upload
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, uploadDir),
   filename: (_, file, cb) => cb(null, `${Date.now()}_${file.originalname}`)
@@ -37,25 +37,28 @@ const upload = multer({
     const ok = ['.pdf', '.docx'].includes(ext);
     cb(ok ? null : new Error('Only PDF/DOCX allowed'), ok);
   },
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
 });
 
-// 5. Health-check
+// 5. Health-check route
 app.get('/api/test', (_, res) => {
   res.json({ status: 'OK' });
 });
 
-// 6. Analyze resume and get AI feedback via Hugging Face DeepSeek
+// 6. Analyze resume route
 app.post('/api/analyze', upload.single('resume'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
   try {
+    // Read and parse PDF/DOCX text
     const buffer = await fs.promises.readFile(req.file.path);
     const { text } = await pdfParse(buffer);
-    const preview = text.trim().substring(0, 1000); // Hugging Face input limit safety
+    const preview = text.trim().substring(0, 1000); // limit input size for API
 
-    const prompt = `You are a professional resume reviewer. Give clear and constructive feedback on the following resume:\n\n${preview}`;
+    // Prepare prompt for DeepSeek model
+    const prompt = `You are a professional resume reviewer. Provide clear and constructive feedback on the following resume:\n\n${preview}`;
 
+    // Call Hugging Face DeepSeek API
     const response = await axios.post(
       'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528',
       { inputs: prompt },
@@ -63,10 +66,11 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
         headers: {
           Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`
         },
-        timeout: 60000 // 60 seconds
+        timeout: 60000 // 60 seconds timeout
       }
     );
 
+    // Extract feedback text from response (adjust based on actual API output)
     const feedback = response.data.generated_text || response.data[0]?.generated_text || 'No feedback generated';
 
     res.json({
@@ -81,12 +85,14 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
   }
 });
 
-// 7. Error handling
+// 7. Handle 404
 app.use((req, res) => res.status(404).json({ error: 'Endpoint not found' }));
+
+// 8. Error handler
 app.use((err, _, res, __) => {
   console.error('Server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// 8. Start server
+// 9. Start server
 app.listen(port, () => console.log(`🚀 Backend running on port ${port}`));

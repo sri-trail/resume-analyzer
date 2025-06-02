@@ -1,19 +1,20 @@
-// backend/routes/resumeFeedback.js
-
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
 const { analyzeText } = require('../controllers/aicontrollers');
 
 const router = express.Router();
 
-// Use memory storage for quick PDF buffer handling
-const upload = multer({ storage: multer.memoryStorage() });
+// Memory storage + size limit for resume upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB max
+});
 
 /**
  * POST /api/analyze
- * Expects multipart/form-data with a 'resume' file field (PDF/DOCX).
- * Parses the PDF, extracts text, and sends it to the AI analysis.
+ * Handles resume upload (PDF/DOCX), extracts text, and returns AI feedback.
  */
 router.post('/api/analyze', upload.single('resume'), async (req, res) => {
   try {
@@ -21,38 +22,38 @@ router.post('/api/analyze', upload.single('resume'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const data = await pdfParse(req.file.buffer);
-    const text = data.text || '';
+    const mimetype = req.file.mimetype;
 
-    // For now return filename and text preview
+    // Only allow PDF and DOCX
+    if (
+      mimetype !== 'application/pdf' &&
+      mimetype !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      return res.status(400).json({ error: 'Unsupported file type. Upload PDF or DOCX only.' });
+    }
+
+    let text = '';
+
+    // Extract text based on file type
+    if (mimetype === 'application/pdf') {
+      const data = await pdfParse(req.file.buffer);
+      text = data.text || '';
+    } else if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+      text = result.value || '';
+    }
+
+    // Analyze extracted text
+    const feedback = await analyzeText(text);
+
     return res.json({
       filename: req.file.originalname,
-      preview: text.slice(0, 500) // Optional: limit preview size
+      preview: text.slice(0, 500),
+      feedback
     });
   } catch (err) {
     console.error('Error in /api/analyze route:', err);
     return res.status(500).json({ error: err.message || 'Analysis failed' });
-  }
-});
-
-/**
- * POST /resume-feedback
- * Expects { text: 'resume text' } in the request body.
- * Sends the plain text to the AI controller for detailed feedback.
- */
-router.post('/resume-feedback', async (req, res) => {
-  try {
-    const { text } = req.body;
-
-    if (!text || typeof text !== 'string') {
-      return res.status(400).json({ error: 'Missing or invalid resume text' });
-    }
-
-    const feedback = await analyzeText(text);
-    return res.json({ feedback });
-  } catch (err) {
-    console.error('Error in /resume-feedback route:', err);
-    return res.status(500).json({ error: err.message || 'AI feedback failed' });
   }
 });
 
