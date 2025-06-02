@@ -19,7 +19,6 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // Base URL from environment
   const API_BASE = process.env.REACT_APP_API_URL
 
   const handleFileChange = e => {
@@ -27,10 +26,7 @@ const ResumeUpload = () => {
     if (!selected) return
 
     if (
-      ![
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ].includes(selected.type)
+      !['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(selected.type)
     ) {
       setError('Invalid file type. Please upload a PDF or DOCX file.')
       setFile(null)
@@ -75,8 +71,23 @@ const ResumeUpload = () => {
         throw new Error(json.error || `Server error ${res.status}`)
       }
 
-      // Expecting { filename, preview }
-      setAnalysisData(json)
+      // Get feedback from AI
+      const feedbackRes = await fetch(`${API_BASE}/resume-feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: json.preview })
+      })
+
+      const feedbackJson = await feedbackRes.json()
+      if (!feedbackRes.ok) {
+        throw new Error(feedbackJson.error || `Feedback error ${feedbackRes.status}`)
+      }
+
+      setAnalysisData({
+        ...json,
+        feedback: feedbackJson.feedback
+      })
+
       setFile(null)
     } catch (err) {
       console.error('Upload error:', err)
@@ -168,6 +179,9 @@ const ResumeUpload = () => {
 
           <Typography variant="h6">Preview:</Typography>
           <Typography paragraph>{analysisData.preview || 'No preview available.'}</Typography>
+
+          <Typography variant="h6">AI Feedback:</Typography>
+          <Typography paragraph>{analysisData.feedback || 'No feedback available.'}</Typography>
         </Paper>
       )}
     </Box>
