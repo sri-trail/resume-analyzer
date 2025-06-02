@@ -1,4 +1,3 @@
-// frontend/src/components/ResumeUpload.js
 import React, { useState } from 'react'
 import {
   Button,
@@ -71,23 +70,7 @@ const ResumeUpload = () => {
         throw new Error(json.error || `Server error ${res.status}`)
       }
 
-      // Get feedback from AI
-      const feedbackRes = await fetch(`${API_BASE}/resume-feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: json.preview })
-      })
-
-      const feedbackJson = await feedbackRes.json()
-      if (!feedbackRes.ok) {
-        throw new Error(feedbackJson.error || `Feedback error ${feedbackRes.status}`)
-      }
-
-      setAnalysisData({
-        ...json,
-        feedback: feedbackJson.feedback
-      })
-
+      setAnalysisData(json)
       setFile(null)
     } catch (err) {
       console.error('Upload error:', err)
