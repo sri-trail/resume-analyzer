@@ -1,5 +1,5 @@
 // frontend/src/components/ResumeUpload.js
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import {
   Button,
   Typography,
@@ -8,84 +8,86 @@ import {
   Alert,
   CircularProgress,
   Paper,
-  Divider
-} from '@mui/material'
+  Divider,
+} from '@mui/material';
 
 const ResumeUpload = () => {
-  const [file, setFile] = useState(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [error, setError] = useState(null)
-  const [fileSizeError, setFileSizeError] = useState(null)
-  const [analysisData, setAnalysisData] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [file, setFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState(null);
+  const [fileSizeError, setFileSizeError] = useState(null);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Treat API_BASE as the root (e.g. "https://your-backend-url")
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000'
+  // If you set REACT_APP_API_URL to "https://python-analyzer-8kda.onrender.com" in your .env,
+  // then API_BASE ends up as "https://python-analyzer-8kda.onrender.com"
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000';
 
-  const handleFileChange = e => {
-    const selected = e.target.files[0]
-    if (!selected) return
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    if (!selected) return;
 
+    // only PDF or DOCX
     if (
       ![
         'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       ].includes(selected.type)
     ) {
-      setError('Invalid file type. Please upload a PDF or DOCX file.')
-      setFile(null)
-      setAnalysisData(null)
-      return
+      setError('Invalid file type. Please upload a PDF or DOCX file.');
+      setFile(null);
+      setAnalysisData(null);
+      return;
     }
-
     if (selected.size > 10 * 1024 * 1024) {
-      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.')
-      setFile(null)
-      setAnalysisData(null)
-      return
+      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.');
+      setFile(null);
+      setAnalysisData(null);
+      return;
     }
 
-    setFile(selected)
-    setError(null)
-    setFileSizeError(null)
-    setAnalysisData(null)
-  }
+    setFile(selected);
+    setError(null);
+    setFileSizeError(null);
+    setAnalysisData(null);
+  };
 
   const handleUpload = async () => {
     if (!file) {
-      setError('Please select a resume file first')
-      return
+      setError('Please select a resume file first');
+      return;
     }
 
-    setIsUploading(true)
-    setLoading(true)
-    setError(null)
+    setIsUploading(true);
+    setLoading(true);
+    setError(null);
 
     try {
-      const form = new FormData()
-      form.append('resume', file)
+      const form = new FormData();
+      form.append('resume', file);
 
-      // Note the “/api/analyze” path here
+      // NOTE: backend route is /api/analyze (per server.js)
       const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
-        body: form
-      })
+        body: form,
+      });
 
-      const json = await res.json()
+      const json = await res.json();
       if (!res.ok) {
-        throw new Error(json.error || `Server error ${res.status}`)
+        throw new Error(json.error || `Server error ${res.status}`);
       }
 
-      setAnalysisData(json)
-      setFile(null)
+      // json should have { filename, preview, feedback }
+      setAnalysisData(json);
+      setFile(null);
     } catch (err) {
-      console.error('Upload error:', err)
-      setError(err.message || 'Upload failed')
+      console.error('Upload error:', err);
+      setError(err.message || 'Upload failed');
     } finally {
-      setIsUploading(false)
-      setLoading(false)
+      setIsUploading(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Box
@@ -96,7 +98,7 @@ const ResumeUpload = () => {
         justifyContent: 'center',
         height: '100vh',
         backgroundColor: '#f4f4f9',
-        p: 3
+        p: 3,
       }}
     >
       <Typography variant="h4" sx={{ mb: 3, color: '#333' }}>
@@ -114,7 +116,7 @@ const ResumeUpload = () => {
           borderRadius: 8,
           border: '1px solid #ccc',
           marginBottom: 20,
-          cursor: isUploading ? 'not-allowed' : 'pointer'
+          cursor: isUploading ? 'not-allowed' : 'pointer',
         }}
       />
 
@@ -144,7 +146,7 @@ const ResumeUpload = () => {
           borderRadius: 2,
           backgroundColor: '#007BFF',
           '&:hover': { backgroundColor: '#0056b3' },
-          mb: 2
+          mb: 2,
         }}
       >
         {isUploading ? 'Uploading...' : 'Upload Resume'}
@@ -174,7 +176,7 @@ const ResumeUpload = () => {
         </Paper>
       )}
     </Box>
-  )
-}
+  );
+};
 
-export default ResumeUpload
+export default ResumeUpload;
