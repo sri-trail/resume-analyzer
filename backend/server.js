@@ -1,3 +1,4 @@
+// backend/server.js
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -10,22 +11,26 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ✅ 1. Enable CORS before routes
-app.use(cors({
-  origin: 'https://resume-analyzer-frontend.onrender.com',
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
+// 1. Enable CORS (must come before any routes)
+app.use(
+  cors({
+    origin: 'https://resume-analyzer-frontend.onrender.com',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    credentials: true
+  })
+);
 app.options('*', cors());
 
-// ✅ 2. Body parsing middleware
+// 2. Parse JSON bodies (not strictly needed for file‐upload route, but OK to have)
 app.use(express.json());
 
-// ✅ 3. Ensure /uploads directory exists
+// 3. Ensure /uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-// ✅ 4. Multer config
+// 4. Configure Multer for file uploads
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, uploadDir),
   filename: (_, file, cb) => cb(null, `${Date.now()}_${file.originalname}`)
@@ -35,27 +40,34 @@ const upload = multer({
   fileFilter: (_, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const allowed = ['.pdf', '.docx'];
-    cb(allowed.includes(ext) ? null : new Error('Only PDF or DOCX files allowed'), allowed.includes(ext));
+    cb(allowed.includes(ext) ? null : new Error('Only PDF/DOCX allowed'), allowed.includes(ext));
   },
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB max
 });
 
-// ✅ 5. Health check
+// 5. Health-check endpoint
 app.get('/api/test', (_, res) => {
-  res.json({ status: 'Backend running' });
+  res.json({ status: 'OK' });
 });
 
-// ✅ 6. Resume analysis route
+// 6. Resume analysis endpoint
 app.post('/api/analyze', upload.single('resume'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
   try {
+    // a) Read file buffer
     const buffer = await fs.promises.readFile(req.file.path);
-    const { text } = await pdfParse(buffer);
-    const preview = text.trim().substring(0, 1000);
 
+    // b) Extract text via pdf-parse
+    const { text } = await pdfParse(buffer);
+    const preview = text.trim().substring(0, 1000); // limit to 1000 chars
+
+    // c) Build prompt for DeepSeek model
     const prompt = `You are a professional resume reviewer. Provide clear and constructive feedback on the following resume:\n\n${preview}`;
 
+    // d) Call Hugging Face DeepSeek-R1-0528 API
     const response = await axios.post(
       'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528',
       { inputs: prompt },
@@ -63,34 +75,36 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
         headers: {
           Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`
         },
-        timeout: 60000
+        timeout: 60000 // 60 seconds
       }
     );
 
-    const feedback = response.data?.generated_text || response.data?.[0]?.generated_text || 'No feedback generated';
+    // e) Extract `generated_text` from response
+    const feedback =
+      response.data.generated_text || response.data[0]?.generated_text || 'No feedback generated';
 
-    res.json({
+    // f) Return JSON
+    return res.json({
       filename: req.file.originalname,
       preview,
       feedback
     });
-
-  } catch (error) {
-    console.error('Resume analysis error:', error.message);
-    res.status(500).json({ error: 'Resume analysis failed', details: error.message });
+  } catch (err) {
+    console.error('Analysis failed:', err.message);
+    return res.status(500).json({ error: 'Analysis failed', details: err.message });
   }
 });
 
-// ✅ 7. Fallback route
-app.use((req, res) => res.status(404).json({ error: 'Endpoint not found' }));
+// 7. 404 handler (must come after all routes)
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
 
-// ✅ 8. Global error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.message);
+// 8. Global error handler (must come last)
+app.use((err, _, res, __) => {
+  console.error('Server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// ✅ 9. Start server
-app.listen(port, () => {
-  console.log(`🚀 Server listening on port ${port}`);
-});
+// 9. Start server (must come after everything else)
+app.listen(port, () => console.log(`🚀 Backend running on port ${port}`));
