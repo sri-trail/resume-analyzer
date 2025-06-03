@@ -25,8 +25,8 @@ app.options('*', cors());
 app.use(express.json());
 
 // 3. Health‐check endpoint at /health
-app.get('/health', (_req, res) => {
-  return res.status(200).json({ status: 'OK' });
+app.get('/api/test', (_, res) => {
+  res.json({ status: 'OK' })
 });
 
 // 4. Ensure /uploads directory exists
@@ -83,10 +83,10 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
     );
 
     // Extract generated feedback (adjust based on model’s output format)
-    const feedback =
-      hfResponse.data.generated_text ||
-      (Array.isArray(hfResponse.data) && hfResponse.data[0]?.generated_text) ||
-      'No feedback generated';
+   const feedback =
+      response.data.generated_text ||
+      response.data[0]?.generated_text ||
+      'No feedback generated'
 
     return res.json({
       filename: req.file.originalname,
@@ -96,6 +96,7 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
   } catch (err) {
     console.error('Analysis failed:', err.message);
     return res.status(500).json({ error: 'Analysis failed', details: err.message });
+  
   }
 });
 

@@ -19,14 +19,13 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // Get backend URL from environment variable (fallback hits localhost for local testing)
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000/api'
+  // Treat API_BASE as the root (e.g. "https://your-backend-url")
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000'
 
   const handleFileChange = e => {
     const selected = e.target.files[0]
     if (!selected) return
 
-    // Validate file type
     if (
       ![
         'application/pdf',
@@ -39,9 +38,8 @@ const ResumeUpload = () => {
       return
     }
 
-    // Validate file size (max 10 MB)
     if (selected.size > 10 * 1024 * 1024) {
-      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.')
+      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.')
       setFile(null)
       setAnalysisData(null)
       return
@@ -67,8 +65,8 @@ const ResumeUpload = () => {
       const form = new FormData()
       form.append('resume', file)
 
-      // Note: calls POST to `/api/analyze`
-      const res = await fetch(`${API_BASE}/analyze`, {
+      // Note the “/api/analyze” path here
+      const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: form
       })
