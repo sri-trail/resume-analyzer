@@ -1,0 +1,110 @@
+// backend/express-analyzer/server.js
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const pdfParse = require('pdf-parse');
+const cors = require('cors');
+const axios = require('axios');
+require('dotenv').config();
+
+const app = express();
+const port = process.env.PORT || 5000;
+
+// 1) Enable CORS (must come before any route)
+app.use(
+  cors({
+    origin: 'https://resume-analyzer-frontend.onrender.com',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    credentials: true,
+  })
+);
+app.options('*', cors());
+
+// 2) Parse JSON bodies
+app.use(express.json());
+
+// 3) Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// 4) Multer setup (file filter: only PDF or DOCX, max 10 MB)
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, uploadDir),
+  filename: (_, file, cb) => cb(null, `${Date.now()}_${file.originalname}`),
+});
+const upload = multer({
+  storage,
+  fileFilter: (_, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowed = ['.pdf', '.docx'];
+    cb(allowed.includes(ext) ? null : new Error('Only PDF/DOCX allowed'), allowed.includes(ext));
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+});
+
+// 5) Health-check endpoint
+app.get('/api/test', (_, res) => {
+  res.json({ status: 'OK' });
+});
+
+// 6) /api/analyze (upload, parse PDF, send to DeepSeek)
+app.post('/api/analyze', upload.single('resume'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  try {
+    // a) Read file into a buffer
+    const buffer = await fs.promises.readFile(req.file.path);
+    // b) Extract text via pdf-parse
+    const { text } = await pdfParse(buffer);
+    const preview = text.trim().substring(0, 1000); // limit to 1000 chars
+
+    // c) Build DeepSeek prompt
+    const prompt = `You are a professional resume reviewer. Provide clear and constructive feedback on the following resume:\n\n${preview}`;
+
+    // d) Call Hugging Face DeepSeek model
+    const hfResponse = await axios.post(
+      'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528',
+      { inputs: prompt },
+      {
+        headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` },
+        timeout: 60000,
+      }
+    );
+
+    // e) Extract generated_text
+    const feedback =
+      (Array.isArray(hfResponse.data) && hfResponse.data[0]?.generated_text) ||
+      hfResponse.data.generated_text ||
+      'No feedback generated';
+
+    return res.json({
+      filename: req.file.originalname,
+      preview,
+      feedback,
+    });
+  } catch (err) {
+    console.error('Analysis failed:', err.message);
+    return res.status(500).json({ error: 'Analysis failed', details: err.message });
+  }
+});
+
+// 7) 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+// 8) Global error handler
+app.use((err, _, res, __) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// 9) Start listening
+app.listen(port, () => {
+  console.log(`🚀 Backend running on port ${port}`);
+});
