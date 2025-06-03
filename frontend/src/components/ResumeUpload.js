@@ -19,7 +19,8 @@ const ResumeUpload = () => {
   const [loading, setLoading] = useState(false)
 
   // Get backend URL from environment variable
-  const API_BASE = process.env.REACT_APP_API_URL;
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000/api';
+
 
   const handleFileChange = e => {
     const selected = e.target.files[0]
