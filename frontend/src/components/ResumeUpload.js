@@ -1,4 +1,5 @@
 // frontend/src/components/ResumeUpload.js
+
 import React, { useState } from 'react';
 import {
   Button,
@@ -19,8 +20,8 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // If you set REACT_APP_API_URL to "https://python-analyzer-8kda.onrender.com" in your .env,
-  // then API_BASE ends up as "https://python-analyzer-8kda.onrender.com"
+  // Point to whichever backend you’ve deployed (Express or Flask).
+  // E.g. "https://python-analyzer-8kda.onrender.com" or "https://resume-analyzer-backend-pcl8.onrender.com"
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000';
 
   const handleFileChange = (e) => {
@@ -54,7 +55,7 @@ const ResumeUpload = () => {
 
   const handleUpload = async () => {
     if (!file) {
-      setError('Please select a resume file first');
+      setError('Please select a resume file first.');
       return;
     }
 
@@ -66,7 +67,9 @@ const ResumeUpload = () => {
       const form = new FormData();
       form.append('resume', file);
 
-      // NOTE: backend route is /api/analyze (per server.js)
+      // Hit whichever “/api/analyze” your backend exposes.
+      // Example for Express: `${API_BASE}/api/analyze`
+      // Example for Flask: `${API_BASE}/analyze`
       const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         body: form,
@@ -77,7 +80,7 @@ const ResumeUpload = () => {
         throw new Error(json.error || `Server error ${res.status}`);
       }
 
-      // json should have { filename, preview, feedback }
+      // Expect { filename, preview, feedback }
       setAnalysisData(json);
       setFile(null);
     } catch (err) {
