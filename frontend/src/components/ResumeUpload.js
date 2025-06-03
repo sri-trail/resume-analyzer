@@ -1,3 +1,4 @@
+// frontend/src/components/ResumeUpload.js
 import React, { useState } from 'react'
 import {
   Button,
@@ -18,9 +19,8 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // Get backend URL from environment variable
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000/api';
-
+  // Get backend URL from environment variable (fallback hits localhost for local testing)
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000/api'
 
   const handleFileChange = e => {
     const selected = e.target.files[0]
@@ -28,7 +28,10 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000/api';
 
     // Validate file type
     if (
-      !['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(selected.type)
+      ![
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ].includes(selected.type)
     ) {
       setError('Invalid file type. Please upload a PDF or DOCX file.')
       setFile(null)
@@ -36,7 +39,7 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000/api';
       return
     }
 
-    // Validate file size (max 10MB)
+    // Validate file size (max 10 MB)
     if (selected.size > 10 * 1024 * 1024) {
       setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.')
       setFile(null)
@@ -64,6 +67,7 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000/api';
       const form = new FormData()
       form.append('resume', file)
 
+      // Note: calls POST to `/api/analyze`
       const res = await fetch(`${API_BASE}/analyze`, {
         method: 'POST',
         body: form
