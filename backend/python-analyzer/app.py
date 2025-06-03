@@ -12,7 +12,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528'
-HUGGINGFACE_TOKEN = os.environ.get('HF_TOKEN')  # Set this token in your environment
+HUGGINGFACE_TOKEN = os.environ.get('HUGGINGFACE_API_KEY_TOKEN')  # Set this token in your environment
 
 @app.route('/', methods=['GET'])
 def home():

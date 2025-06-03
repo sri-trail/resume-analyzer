@@ -1,59 +1,65 @@
 const express = require('express');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
-const mammoth = require('mammoth');
-const { analyzeText } = require('../controllers/aicontrollers');
+const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
 
 const router = express.Router();
 
-// Memory storage + size limit for resume upload
+// Set up Multer storage
+const uploadDir = path.join(__dirname, '..', 'uploads');
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, uploadDir),
+  filename: (_, file, cb) => cb(null, `${Date.now()}_${file.originalname}`)
+});
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB max
+  storage,
+  fileFilter: (_, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(['.pdf', '.docx'].includes(ext) ? null : new Error('Only PDF/DOCX allowed'), true);
+  },
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
 });
 
-/**
- * POST /api/analyze
- * Handles resume upload (PDF/DOCX), extracts text, and returns AI feedback.
- */
-router.post('/api/analyze', upload.single('resume'), async (req, res) => {
+// Health check
+router.get('/test', (_, res) => {
+  res.json({ status: 'OK' });
+});
+
+// Main analysis route
+router.post('/analyze', upload.single('resume'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+    const buffer = await fs.promises.readFile(req.file.path);
+    const { text } = await pdfParse(buffer);
+    const preview = text.trim().substring(0, 1000);
 
-    const mimetype = req.file.mimetype;
+    const prompt = `You are a professional resume reviewer. Provide clear and constructive feedback on the following resume:\n\n${preview}`;
 
-    // Only allow PDF and DOCX
-    if (
-      mimetype !== 'application/pdf' &&
-      mimetype !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ) {
-      return res.status(400).json({ error: 'Unsupported file type. Upload PDF or DOCX only.' });
-    }
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528',
+      { inputs: prompt },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`
+        },
+        timeout: 60000
+      }
+    );
 
-    let text = '';
+    const feedback = response.data.generated_text || response.data[0]?.generated_text || 'No feedback generated';
 
-    // Extract text based on file type
-    if (mimetype === 'application/pdf') {
-      const data = await pdfParse(req.file.buffer);
-      text = data.text || '';
-    } else if (mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      const result = await mammoth.extractRawText({ buffer: req.file.buffer });
-      text = result.value || '';
-    }
-
-    // Analyze extracted text
-    const feedback = await analyzeText(text);
-
-    return res.json({
+    res.json({
       filename: req.file.originalname,
-      preview: text.slice(0, 500),
+      preview,
       feedback
     });
+
   } catch (err) {
-    console.error('Error in /api/analyze route:', err);
-    return res.status(500).json({ error: err.message || 'Analysis failed' });
+    console.error('Analysis failed:', err.message);
+    res.status(500).json({ error: 'Analysis failed', details: err.message });
   }
 });
 
