@@ -11,24 +11,23 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// 1) Enable CORS (allow only our frontend)
-app.use(
-  cors({
-    origin: 'https://resume-analyzer-frontend.onrender.com',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    credentials: true,
-  })
-);
+// ✅ 1) Enable CORS for frontend
+app.use(cors({
+  origin: 'https://resume-analyzer-frontend.onrender.com',
+  methods: ['GET', 'POST', 'OPTIONS'],
+}));
 app.options('*', cors());
 
-// 2) JSON-body parsing (for safety, though we only expect multipart)
+// ✅ 2) Parse incoming JSON
 app.use(express.json());
 
-// 3) Ensure /uploads directory exists
+// ✅ 3) Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-// 4) Multer setup for file upload (PDF/DOCX, 10 MB max)
+// ✅ 4) Multer config for file uploads
 const storage = multer.diskStorage({
   destination: (_, __, cb) => cb(null, uploadDir),
   filename: (_, file, cb) => cb(null, `${Date.now()}_${file.originalname}`),
@@ -37,39 +36,30 @@ const upload = multer({
   storage,
   fileFilter: (_, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const allowed = ['.pdf', '.docx'];
-    cb(allowed.includes(ext) ? null : new Error('Only PDF/DOCX allowed'), allowed.includes(ext));
+    cb(null, ['.pdf', '.docx'].includes(ext));
   },
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
-// 5) Health-check endpoint (Render will hit this)
-app.get('/health', (_, res) => {
-  res.json({ status: 'OK' });
-});
+// ✅ 5) Health-check
+app.get('/health', (_, res) => res.json({ status: 'OK' }));
 
-// 6) Root GET (to quickly check if server is alive)
-app.get('/', (_, res) => {
-  res.send('Express Resume Analyzer is up.');
-});
+// ✅ 6) Simple alive check
+app.get('/', (_, res) => res.send('Express Resume Analyzer is up.'));
 
-// 7) Analyze endpoint (listen on exactly “/analyze”)
+// ✅ 7) Main /analyze route
 app.post('/analyze', upload.single('resume'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
   try {
-    // (a) Read the file from disk
     const buffer = await fs.promises.readFile(req.file.path);
-    // (b) Extract text from PDF
     const { text } = await pdfParse(buffer);
-    const preview = text.trim().substring(0, 1000); // limit to 1000 chars
+    const preview = text.trim().substring(0, 1000);
 
-    // (c) Build a prompt for DeepSeek
     const prompt = `You are a professional resume reviewer. Provide clear, constructive feedback on this resume:\n\n${preview}`;
 
-    // (d) Call Hugging Face DeepSeek endpoint
     const response = await axios.post(
       'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528',
       { inputs: prompt },
@@ -78,11 +68,10 @@ app.post('/analyze', upload.single('resume'), async (req, res) => {
           Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        timeout: 60_000, // 60 sec
+        timeout: 60000,
       }
     );
 
-    // (e) Extract generated_text
     let feedback = 'No feedback generated';
     const data = response.data;
     if (Array.isArray(data) && data[0]?.generated_text) {
@@ -104,18 +93,18 @@ app.post('/analyze', upload.single('resume'), async (req, res) => {
   }
 });
 
-// 8) 404 handler
+// ✅ 8) Catch-all route
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// 9) Global error handler
-app.use((err, _, res, __) => {
+// ✅ 9) Global error handler
+app.use((err, req, res, next) => {
   console.error('Server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// 10) Start server
+// ✅ 10) Start the server
 app.listen(port, () => {
   console.log(`🚀 Backend running on port ${port}`);
 });
