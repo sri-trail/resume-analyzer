@@ -36,20 +36,21 @@ router.post('/analyze', upload.single('resume'), async (req, res) => {
     const { text } = await pdfParse(buffer);
     const preview = text.trim().substring(0, 1000);
 
-    const prompt = `You are a professional resume reviewer. Provide clear and constructive feedback on the following resume:\n\n${preview}`;
+    const prompt = `You are a professional resume reviewer. Provide actionable and constructive feedback on this resume:\n\n${preview}`;
 
     const response = await axios.post(
-      'https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528',
+      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
       { inputs: prompt },
       {
         headers: {
-          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          'Content-Type': 'application/json'
         },
         timeout: 60000
       }
     );
 
-    const feedback = response.data.generated_text || response.data[0]?.generated_text || 'No feedback generated';
+    const feedback = response.data?.[0]?.generated_text || 'No feedback generated';
 
     res.json({
       filename: req.file.originalname,
