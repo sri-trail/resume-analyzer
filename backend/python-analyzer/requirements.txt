@@ -2,4 +2,4 @@ Flask==2.2.5
 flask-cors==3.0.10
 pdfminer.six==20250506
 requests==2.32.3
-gunicorn
+gunicorn==21.2.0
