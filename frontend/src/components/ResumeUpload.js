@@ -1,5 +1,5 @@
 // frontend/src/components/ResumeUpload.js
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Button,
   Typography,
@@ -8,8 +8,8 @@ import {
   Alert,
   CircularProgress,
   Paper,
-  Divider,
-} from "@mui/material";
+  Divider
+} from '@mui/material';
 
 const ResumeUpload = () => {
   const [file, setFile] = useState(null);
@@ -19,31 +19,28 @@ const ResumeUpload = () => {
   const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // POINT THIS AT YOUR FLASK DEPLOYMENT:
-  const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  // Use the Python/Express backend URL (no `/api` prefix)
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000';
 
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
     if (!selected) return;
 
-    // Only allow PDF or DOCX
+    // 1) Validate type
     if (
-      ![
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ].includes(selected.type)
+      !['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(
+        selected.type
+      )
     ) {
-      setError("Invalid file type. Please upload a PDF or DOCX file.");
+      setError('Invalid file type. Please upload a PDF or DOCX file.');
       setFile(null);
       setAnalysisData(null);
       return;
     }
 
-    // Max 10 MB
+    // 2) Validate size (10 MB)
     if (selected.size > 10 * 1024 * 1024) {
-      setFileSizeError(
-        "File size exceeds the 10 MB limit. Please upload a smaller file."
-      );
+      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.');
       setFile(null);
       setAnalysisData(null);
       return;
@@ -57,7 +54,7 @@ const ResumeUpload = () => {
 
   const handleUpload = async () => {
     if (!file) {
-      setError("Please select a resume file first");
+      setError('Please select a resume file first');
       return;
     }
 
@@ -67,25 +64,32 @@ const ResumeUpload = () => {
 
     try {
       const form = new FormData();
-      form.append("resume", file);
+      form.append('resume', file);
 
-      // POST to Flask /analyze
+      // NOTE: We are hitting `/analyze` (no `/api`)
       const res = await fetch(`${API_BASE}/analyze`, {
-        method: "POST",
+        method: 'POST',
         body: form,
       });
 
-      const json = await res.json();
+      // Try to parse JSON
+      let json;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error(`Expected JSON, got status ${res.status}`);
+      }
+
       if (!res.ok) {
         throw new Error(json.error || `Server error ${res.status}`);
       }
 
-      // Expect { filename, preview, feedback }
+      // We now expect { filename, preview, feedback }
       setAnalysisData(json);
       setFile(null);
     } catch (err) {
-      console.error("Upload error:", err);
-      setError(err.message || "Upload failed");
+      console.error('Upload error:', err);
+      setError(err.message || 'Upload failed');
     } finally {
       setIsUploading(false);
       setLoading(false);
@@ -95,16 +99,16 @@ const ResumeUpload = () => {
   return (
     <Box
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        backgroundColor: "#f4f4f9",
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        backgroundColor: '#f4f4f9',
         p: 3,
       }}
     >
-      <Typography variant="h4" sx={{ mb: 3, color: "#333" }}>
+      <Typography variant="h4" sx={{ mb: 3, color: '#333' }}>
         Upload Your Resume
       </Typography>
 
@@ -114,26 +118,18 @@ const ResumeUpload = () => {
         onChange={handleFileChange}
         disabled={isUploading}
         style={{
-          padding: "10px",
-          backgroundColor: "white",
+          padding: '10px',
+          backgroundColor: 'white',
           borderRadius: 8,
-          border: "1px solid #ccc",
+          border: '1px solid #ccc',
           marginBottom: 20,
-          cursor: isUploading ? "not-allowed" : "pointer",
+          cursor: isUploading ? 'not-allowed' : 'pointer',
         }}
       />
 
       {fileSizeError && (
-        <Snackbar
-          open
-          autoHideDuration={6000}
-          onClose={() => setFileSizeError(null)}
-        >
-          <Alert
-            onClose={() => setFileSizeError(null)}
-            severity="error"
-            sx={{ width: "100%" }}
-          >
+        <Snackbar open autoHideDuration={6000} onClose={() => setFileSizeError(null)}>
+          <Alert onClose={() => setFileSizeError(null)} severity="error" sx={{ width: '100%' }}>
             {fileSizeError}
           </Alert>
         </Snackbar>
@@ -141,11 +137,7 @@ const ResumeUpload = () => {
 
       {error && (
         <Snackbar open autoHideDuration={6000} onClose={() => setError(null)}>
-          <Alert
-            onClose={() => setError(null)}
-            severity="error"
-            sx={{ width: "100%" }}
-          >
+          <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
             {error}
           </Alert>
         </Snackbar>
@@ -159,12 +151,12 @@ const ResumeUpload = () => {
           px: 3,
           py: 1.5,
           borderRadius: 2,
-          backgroundColor: "#007BFF",
-          "&:hover": { backgroundColor: "#0056b3" },
+          backgroundColor: '#007BFF',
+          '&:hover': { backgroundColor: '#0056b3' },
           mb: 2,
         }}
       >
-        {isUploading ? "Uploading…" : "Upload Resume"}
+        {isUploading ? 'Uploading...' : 'Upload Resume'}
       </Button>
 
       {loading && !analysisData && (
@@ -175,7 +167,7 @@ const ResumeUpload = () => {
 
       {analysisData && (
         <Paper sx={{ p: 4, maxWidth: 600, mt: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, textAlign: "center" }}>
+          <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>
             Resume Analysis Results
           </Typography>
           <Divider sx={{ mb: 3 }} />
@@ -184,14 +176,10 @@ const ResumeUpload = () => {
           <Typography paragraph>{analysisData.filename}</Typography>
 
           <Typography variant="h6">Preview:</Typography>
-          <Typography paragraph>
-            {analysisData.preview || "No preview available."}
-          </Typography>
+          <Typography paragraph>{analysisData.preview || 'No preview available.'}</Typography>
 
           <Typography variant="h6">AI Feedback:</Typography>
-          <Typography paragraph>
-            {analysisData.feedback || "No feedback available."}
-          </Typography>
+          <Typography paragraph>{analysisData.feedback || 'No feedback available.'}</Typography>
         </Paper>
       )}
     </Box>
