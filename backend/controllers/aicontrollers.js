@@ -35,5 +35,43 @@ async function analyzeText(text) {
     throw new Error('Failed to analyze text via Hugging Face API');
   }
 }
+// backend/controllers/aicontrollers.js
+const axios = require('axios')
+
+async function analyzeText(text) {
+  if (!text || !text.trim()) {
+    throw new Error('No resume text provided')
+  }
+
+  const apiUrl = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1'
+
+  try {
+    const response = await axios.post(
+      apiUrl,
+      {
+        inputs: `You are a professional resume reviewer. Provide actionable feedback on this resume:\n\n${text}`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    )
+
+    // Pull out `generated_text`
+    const output = Array.isArray(response.data) && response.data[0]?.generated_text
+      ? response.data[0].generated_text
+      : response.data.generated_text || 'No feedback received.'
+
+    return { feedback: output }
+  } catch (error) {
+    console.error('Error calling Hugging Face API:', error.response?.data || error.message)
+    throw new Error('Failed to analyze text via Hugging Face API')
+  }
+}
+
+module.exports = { analyzeText }
 
 module.exports = { analyzeText };

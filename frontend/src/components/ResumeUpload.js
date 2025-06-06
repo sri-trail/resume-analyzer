@@ -1,5 +1,4 @@
-// frontend/src/components/ResumeUpload.js
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 import {
   Button,
   Typography,
@@ -9,22 +8,26 @@ import {
   CircularProgress,
   Paper,
   Divider
-} from '@mui/material';
+} from '@mui/material'
 
 const ResumeUpload = () => {
-  const [file, setFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState(null);
-  const [fileSizeError, setFileSizeError] = useState(null);
-  const [analysisData, setAnalysisData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [file, setFile] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState(null)
+  const [fileSizeError, setFileSizeError] = useState(null)
+  const [analysisData, setAnalysisData] = useState(null)
+  const [loading, setLoading] = useState(false)
 
-  // Use the Python/Express backend URL (no `/api` prefix)
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:10000';
+  // Make sure this matches your Render‐deployed backend URL
+  // (no trailing slash). Example:
+  //   REACT_APP_API_URL=https://resume-analyzer-backend-pcl8.onrender.com
+  //
+  // This line reads from .env at build time.
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000'
 
   const handleFileChange = (e) => {
-    const selected = e.target.files[0];
-    if (!selected) return;
+    const selected = e.target.files[0]
+    if (!selected) return
 
     // 1) Validate type
     if (
@@ -32,69 +35,72 @@ const ResumeUpload = () => {
         selected.type
       )
     ) {
-      setError('Invalid file type. Please upload a PDF or DOCX file.');
-      setFile(null);
-      setAnalysisData(null);
-      return;
+      setError('Invalid file type. Please upload a PDF or DOCX file.')
+      setFile(null)
+      setAnalysisData(null)
+      return
     }
 
     // 2) Validate size (10 MB)
     if (selected.size > 10 * 1024 * 1024) {
-      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.');
-      setFile(null);
-      setAnalysisData(null);
-      return;
+      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.')
+      setFile(null)
+      setAnalysisData(null)
+      return
     }
 
-    setFile(selected);
-    setError(null);
-    setFileSizeError(null);
-    setAnalysisData(null);
-  };
+    setFile(selected)
+    setError(null)
+    setFileSizeError(null)
+    setAnalysisData(null)
+  }
 
   const handleUpload = async () => {
     if (!file) {
-      setError('Please select a resume file first');
-      return;
+      setError('Please select a resume file first')
+      return
     }
 
-    setIsUploading(true);
-    setLoading(true);
-    setError(null);
+    setIsUploading(true)
+    setLoading(true)
+    setError(null)
 
     try {
-      const form = new FormData();
-      form.append('resume', file);
+      const form = new FormData()
+      form.append('resume', file)
 
-      // NOTE: We are hitting `/analyze` (no `/api`)
+      // Log out what URL we’re hitting
+      console.log('API_BASE:', API_BASE)
+      console.log('POST →', `${API_BASE}/analyze`)
+      console.log('Uploading file:', file.name)
+
       const res = await fetch(`${API_BASE}/analyze`, {
         method: 'POST',
         body: form,
-      });
+      })
 
-      // Try to parse JSON
-      let json;
+      let json
       try {
-        json = await res.json();
+        json = await res.json()
       } catch {
-        throw new Error(`Expected JSON, got status ${res.status}`);
+        throw new Error(`Expected JSON, got status ${res.status}`)
       }
 
       if (!res.ok) {
-        throw new Error(json.error || `Server error ${res.status}`);
+        throw new Error(json.error || `Server error ${res.status}`)
       }
 
-      // We now expect { filename, preview, feedback }
-      setAnalysisData(json);
-      setFile(null);
+      // Expecting { filename, preview, feedback }
+      setAnalysisData(json)
+      setFile(null)
     } catch (err) {
-      console.error('Upload error:', err);
-      setError(err.message || 'Upload failed');
+      console.error('Upload error:', err)
+      setError(err.message || 'Upload failed')
     } finally {
-      setIsUploading(false);
-      setLoading(false);
+      setIsUploading(false)
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Box
@@ -183,7 +189,7 @@ const ResumeUpload = () => {
         </Paper>
       )}
     </Box>
-  );
-};
+  )
+}
 
-export default ResumeUpload;
+export default ResumeUpload
