@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Button,
   Typography,
@@ -6,182 +6,171 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
-  Paper,
-  Divider,
-} from '@mui/material';
+  Paper
+} from "@mui/material";
 
-const ResumeUpload = () => {
+const ResumeUpload = ({ onUpload }) => {
   const [file, setFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
   const [fileSizeError, setFileSizeError] = useState(null);
-  const [analysisData, setAnalysisData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // This should point at your Express backend’s root URL:
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files[0];
+  const allowedTypes = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ];
+
+  const handleFileChange = (selected) => {
     if (!selected) return;
 
-    // Validate MIME type
-    if (
-      !['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(
-        selected.type
-      )
-    ) {
-      setError('Invalid file type. Please upload a PDF or DOCX file.');
+    // ❌ Wrong file type
+    if (!allowedTypes.includes(selected.type)) {
+      setError("Invalid file type. Please upload a PDF, DOC, or DOCX file.");
       setFile(null);
-      setAnalysisData(null);
       return;
     }
 
-    // Validate size (max 10 MB)
+    // ❌ Too large
     if (selected.size > 10 * 1024 * 1024) {
-      setFileSizeError('File size exceeds the 10 MB limit. Please upload a smaller file.');
+      setFileSizeError("File size exceeds the 10 MB limit.");
       setFile(null);
-      setAnalysisData(null);
       return;
     }
 
+    // ✔ Valid file
     setFile(selected);
     setError(null);
     setFileSizeError(null);
-    setAnalysisData(null);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const selected = e.dataTransfer.files[0];
+    handleFileChange(selected);
   };
 
   const handleUpload = async () => {
     if (!file) {
-      setError('Please select a resume file first');
+      setError("Please select a resume file first.");
       return;
     }
 
-    setIsUploading(true);
     setLoading(true);
     setError(null);
 
     try {
       const form = new FormData();
-      form.append('resume', file);
-
-      console.log('API_BASE:', API_BASE);
-      console.log('POST to:', `${API_BASE}/analyze`);
-      console.log('File:', file.name);
+      form.append("resume", file);
 
       const res = await fetch(`${API_BASE}/analyze`, {
-        method: 'POST',
-        body: form,
+        method: "POST",
+        body: form
       });
 
       let json;
       try {
         json = await res.json();
       } catch {
-        throw new Error(`Expected JSON, got status ${res.status}`);
+        throw new Error("Server returned invalid JSON");
       }
 
       if (!res.ok) {
-        throw new Error(json.error || `Server error ${res.status}`);
+        throw new Error(json?.error || `Server error ${res.status}`);
       }
 
-      // json = { filename, preview, feedback }
-      setAnalysisData(json);
+      onUpload(json);
       setFile(null);
+      document.getElementById("resume-upload").value = "";
     } catch (err) {
-      console.error('Upload error:', err);
-      setError(err.message || 'Upload failed');
+      console.error("Upload error:", err);
+      setError(err.message || "Upload failed");
     } finally {
-      setIsUploading(false);
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        backgroundColor: '#f4f4f9',
-        p: 3,
-      }}
-    >
-      <Typography variant="h4" sx={{ mb: 3, color: '#333' }}>
+    <Box sx={{ maxWidth: 600, margin: "0 auto", padding: 4 }}>
+      <Typography variant="h4" sx={{ mb: 3, textAlign: "center" }}>
         Upload Your Resume
       </Typography>
 
-      <input
-        id="resume-upload"
-        type="file"
-        onChange={handleFileChange}
-        disabled={isUploading}
-        style={{
-          padding: '10px',
-          backgroundColor: 'white',
-          borderRadius: 8,
-          border: '1px solid #ccc',
-          marginBottom: 20,
-          cursor: isUploading ? 'not-allowed' : 'pointer',
+      {/* DRAG & DROP ZONE */}
+      <Paper
+        elevation={3}
+        sx={{
+          padding: 4,
+          borderRadius: 3,
+          textAlign: "center",
+          border: "2px dashed #888",
+          cursor: "pointer",
+          mb: 3,
+          backgroundColor: "#fafafa"
         }}
-      />
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
+      >
+        <Typography sx={{ mb: 2 }}>
+          Drag & drop your resume here, or click to select a file
+        </Typography>
 
-      {fileSizeError && (
-        <Snackbar open autoHideDuration={6000} onClose={() => setFileSizeError(null)}>
-          <Alert onClose={() => setFileSizeError(null)} severity="error" sx={{ width: '100%' }}>
-            {fileSizeError}
-          </Alert>
-        </Snackbar>
-      )}
+        <input
+          id="resume-upload"
+          type="file"
+          onChange={(e) => handleFileChange(e.target.files[0])}
+          disabled={loading}
+          style={{ display: "none" }}
+        />
 
-      {error && (
-        <Snackbar open autoHideDuration={6000} onClose={() => setError(null)}>
-          <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
-            {error}
-          </Alert>
-        </Snackbar>
-      )}
+        <Button
+          variant="outlined"
+          onClick={() => document.getElementById("resume-upload").click()}
+        >
+          Choose File
+        </Button>
 
+        {file && (
+          <Typography sx={{ mt: 2, fontWeight: "bold" }}>
+            Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+          </Typography>
+        )}
+      </Paper>
+
+      {/* UPLOAD BUTTON */}
       <Button
         variant="contained"
+        fullWidth
         onClick={handleUpload}
-        disabled={!file || isUploading}
-        sx={{
-          px: 3,
-          py: 1.5,
-          borderRadius: 2,
-          backgroundColor: '#007BFF',
-          '&:hover': { backgroundColor: '#0056b3' },
-          mb: 2,
-        }}
+        disabled={!file || loading}
+        sx={{ py: 1.5, borderRadius: 2 }}
       >
-        {isUploading ? 'Uploading...' : 'Upload Resume'}
+        {loading ? "Uploading..." : "Upload Resume"}
       </Button>
 
-      {loading && !analysisData && (
-        <Box sx={{ mt: 2 }}>
+      {loading && (
+        <Box sx={{ textAlign: "center", mt: 2 }}>
           <CircularProgress />
         </Box>
       )}
 
-      {analysisData && (
-        <Paper sx={{ p: 4, maxWidth: 600, mt: 4 }}>
-          <Typography variant="h5" sx={{ mb: 2, textAlign: 'center' }}>
-            Resume Analysis Results
-          </Typography>
-          <Divider sx={{ mb: 3 }} />
+      {/* ERRORS */}
+      {error && (
+        <Snackbar open autoHideDuration={6000} onClose={() => setError(null)}>
+          <Alert severity="error">{error}</Alert>
+        </Snackbar>
+      )}
 
-          <Typography variant="h6">Filename:</Typography>
-          <Typography paragraph>{analysisData.filename}</Typography>
-
-          <Typography variant="h6">Preview:</Typography>
-          <Typography paragraph>{analysisData.preview || 'No preview available.'}</Typography>
-
-          <Typography variant="h6">Basic Feedback:</Typography>
-          <Typography paragraph>{analysisData.feedback || 'No feedback available.'}</Typography>
-        </Paper>
+      {fileSizeError && (
+        <Snackbar
+          open
+          autoHideDuration={6000}
+          onClose={() => setFileSizeError(null)}
+        >
+          <Alert severity="error">{fileSizeError}</Alert>
+        </Snackbar>
       )}
     </Box>
   );
