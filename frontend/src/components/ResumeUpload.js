@@ -11,39 +11,41 @@ import {
 
 const ResumeUpload = ({ onUpload }) => {
   const [file, setFile] = useState(null);
-  const [error, setError] = useState(null);
-  const [fileSizeError, setFileSizeError] = useState(null);
+  const [popup, setPopup] = useState({ open: false, message: "", severity: "error" });
   const [loading, setLoading] = useState(false);
 
-  const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  const API_BASE = "http://localhost:10000";
 
   const allowedTypes = [
     "application/pdf",
     "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "image/jpeg",
+    "image/png"
   ];
+
+  const showPopup = (message, severity = "error") => {
+    setPopup({ open: true, message, severity });
+  };
 
   const handleFileChange = (selected) => {
     if (!selected) return;
 
-    // ❌ Wrong file type
     if (!allowedTypes.includes(selected.type)) {
-      setError("Invalid file type. Please upload a PDF, DOC, or DOCX file.");
+      showPopup("Unsupported file type. Upload PDF, DOCX, DOC, TXT, JPG, or PNG.");
       setFile(null);
       return;
     }
 
-    // ❌ Too large
     if (selected.size > 10 * 1024 * 1024) {
-      setFileSizeError("File size exceeds the 10 MB limit.");
+      showPopup("File size exceeds the 10 MB limit.");
       setFile(null);
       return;
     }
 
-    // ✔ Valid file
     setFile(selected);
-    setError(null);
-    setFileSizeError(null);
+    showPopup(`Selected: ${selected.name}`, "info");
   };
 
   const handleDrop = (e) => {
@@ -54,39 +56,89 @@ const ResumeUpload = ({ onUpload }) => {
 
   const handleUpload = async () => {
     if (!file) {
-      setError("Please select a resume file first.");
+      showPopup("Please select a resume file first.");
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     try {
+      // STEP 1: Extract text
       const form = new FormData();
       form.append("resume", file);
 
-      const res = await fetch(`${API_BASE}/analyze`, {
+      const extractRes = await fetch(`${API_BASE}/analyze`, {
         method: "POST",
         body: form
       });
 
-      let json;
-      try {
-        json = await res.json();
-      } catch {
-        throw new Error("Server returned invalid JSON");
+      const raw = await extractRes.text();
+      let extractJson;
+
+      if (extractRes.headers.get("content-type")?.includes("application/json")) {
+        extractJson = JSON.parse(raw);
+      } else {
+        throw new Error("Server returned non‑JSON response while extracting text.");
       }
 
-      if (!res.ok) {
-        throw new Error(json?.error || `Server error ${res.status}`);
+      if (!extractRes.ok) {
+        throw new Error(extractJson?.error || "Failed to extract text.");
       }
 
-      onUpload(json);
+      const extractedText = extractJson.extractedText;
+
+      // STEP 2: ATS analysis
+      const atsRes = await fetch(`${API_BASE}/analyze-resume`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeText: extractedText })
+      });
+
+      const atsJson = await atsRes.json();
+
+      if (!atsRes.ok) {
+        throw new Error(atsJson?.error || "Failed to analyze resume.");
+      }
+
+      // STEP 3: AI‑enhanced PDF → Word conversion (ONLY if PDF)
+      
+      if (file.type === "application/pdf") {
+        const convertForm = new FormData();
+        convertForm.append("file", file);
+
+        const convertRes = await fetch(`${API_BASE}/convert/pdf-to-word`, {
+          method: "POST",
+          body: convertForm
+        });
+
+        if (!convertRes.ok) {
+          throw new Error("PDF → Word conversion failed.");
+        }
+
+        const blob = await convertRes.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name.replace(".pdf", "_cleaned.docx");
+        a.click();
+      }
+
+      // STEP 4: Send ATS results to dashboard
+      onUpload({
+        ...atsJson,
+        extractedText
+      });
+
+      showPopup("Resume analyzed successfully!", "success");
+
       setFile(null);
-      document.getElementById("resume-upload").value = "";
+      const input = document.getElementById("resume-upload");
+      if (input) input.value = "";
+
     } catch (err) {
       console.error("Upload error:", err);
-      setError(err.message || "Upload failed");
+      showPopup(err.message || "Upload failed");
     } finally {
       setLoading(false);
     }
@@ -98,7 +150,6 @@ const ResumeUpload = ({ onUpload }) => {
         Upload Your Resume
       </Typography>
 
-      {/* DRAG & DROP ZONE */}
       <Paper
         elevation={3}
         sx={{
@@ -112,6 +163,7 @@ const ResumeUpload = ({ onUpload }) => {
         }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
+        onClick={() => document.getElementById("resume-upload").click()}
       >
         <Typography sx={{ mb: 2 }}>
           Drag & drop your resume here, or click to select a file
@@ -119,6 +171,7 @@ const ResumeUpload = ({ onUpload }) => {
 
         <input
           id="resume-upload"
+          name="resume"
           type="file"
           onChange={(e) => handleFileChange(e.target.files[0])}
           disabled={loading}
@@ -139,7 +192,6 @@ const ResumeUpload = ({ onUpload }) => {
         )}
       </Paper>
 
-      {/* UPLOAD BUTTON */}
       <Button
         variant="contained"
         fullWidth
@@ -156,22 +208,21 @@ const ResumeUpload = ({ onUpload }) => {
         </Box>
       )}
 
-      {/* ERRORS */}
-      {error && (
-        <Snackbar open autoHideDuration={6000} onClose={() => setError(null)}>
-          <Alert severity="error">{error}</Alert>
-        </Snackbar>
-      )}
-
-      {fileSizeError && (
-        <Snackbar
-          open
-          autoHideDuration={6000}
-          onClose={() => setFileSizeError(null)}
+      <Snackbar
+        open={popup.open}
+        autoHideDuration={5000}
+        onClose={() => setPopup({ ...popup, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setPopup({ ...popup, open: false })}
+          severity={popup.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
         >
-          <Alert severity="error">{fileSizeError}</Alert>
-        </Snackbar>
-      )}
+          {popup.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

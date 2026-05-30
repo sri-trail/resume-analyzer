@@ -3,12 +3,24 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const pdfParse = require("pdf-parse");
-const { analyzeResume } = require("./aiClient");
+
+// ROUTES
+const analyzeRoute = require("./routes/analyze");
+const analyzeResumeRoute = require("./routes/analyzeResume");
+const compareRoute = require("./routes/compare");
+const tailorResumeRoute = require("./routes/tailorResume");
+const coverLetterRoute = require("./routes/coverLetter");
+const convertRoute = require("./routes/convert");
 
 const app = express();
 
-// Render provides PORT automatically
+// Log every request
+app.use((req, res, next) => {
+  console.log("INCOMING REQUEST:", req.method, req.url);
+  next();
+});
+
+// PORT
 const port = process.env.PORT || 10000;
 
 // CORS
@@ -22,46 +34,45 @@ app.use(
   })
 );
 
+// JSON parser
 app.use(express.json());
 
-// Multer (memory storage only)
+// Multer (memory storage)
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Health check (Render uses this)
+// ------------------------------
+// HEALTH CHECK
+// ------------------------------
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
-// Root route
+// ------------------------------
+// ROOT ROUTE
+// ------------------------------
 app.get("/", (req, res) => {
   res.send("AI Resume Analyzer Backend Running");
 });
 
-// Analyze resume
-app.post("/analyze", upload.single("resume"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No resume uploaded" });
-    }
+// ------------------------------
+// ROUTES
+// ------------------------------
+app.use("/compare", compareRoute);
+app.use("/tailor-resume", tailorResumeRoute);
+app.use("/cover-letter", coverLetterRoute);
 
-    // Extract text from PDF buffer
-    const pdfData = await pdfParse(req.file.buffer);
-    const text = pdfData.text;
+// Extract text from resume (PDF/DOC/DOCX/TXT/IMG)
+app.use("/analyze", upload.single("resume"), analyzeRoute);
 
-    // AI analysis
-    const analysis = await analyzeResume(text);
-    if (!analysis) {
-      return res.status(500).json({ error: "AI returned no data" });
-    }
+// ATS analysis route (JSON only)
+app.use("/analyze-resume", analyzeResumeRoute);
 
-    res.json(analysis);
-  } catch (error) {
-    console.error("Server Error:", error.message);
-    res.status(500).json({ error: "Failed to analyze resume" });
-  }
-});
+// ⭐ FIXED — NOW IN THE RIGHT PLACE
+app.use("/convert", convertRoute);
 
-// SINGLE listen call (correct)
+// ------------------------------
+// START SERVER
+// ------------------------------
 app.listen(port, () => {
   console.log(`🚀 Backend running on port ${port}`);
 });
