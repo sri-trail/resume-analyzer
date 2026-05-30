@@ -21,8 +21,6 @@ import DownloadIcon from "@mui/icons-material/Download";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
 import html2pdf from "html2pdf.js";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-
 import CircleMeter from "./CircleMeter";
 
 const Dashboard = ({ resumeData }) => {
@@ -56,7 +54,6 @@ const Dashboard = ({ resumeData }) => {
   // -----------------------------
   const downloadPDF = () => {
     const element = document.getElementById("ats-report");
-
     const options = {
       margin: 0.5,
       filename: "ATS_Report.pdf",
@@ -64,153 +61,7 @@ const Dashboard = ({ resumeData }) => {
       html2canvas: { scale: 2 },
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
     };
-
     html2pdf().set(options).from(element).save();
-  };
-
-  // -----------------------------
-  // DOWNLOAD WORD
-  // -----------------------------
-  const downloadWord = async () => {
-    const doc = new Document({
-      sections: [
-        {
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "Resume ATS Dashboard",
-                  bold: true,
-                  size: 32
-                })
-              ]
-            }),
-
-            new Paragraph(""),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: `ATS Match Score: ${matchScore}%`,
-                  bold: true
-                })
-              ]
-            }),
-
-            new Paragraph(""),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "Experience Alignment",
-                  bold: true,
-                  size: 26
-                })
-              ]
-            }),
-
-            new Paragraph(experienceAlignment.summary || ""),
-
-            ...(experienceAlignment.details || []).map(
-              (item) =>
-                new Paragraph(`${item.section}: ${item.score}%`)
-            ),
-
-            new Paragraph(""),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "Missing Keywords",
-                  bold: true,
-                  size: 26
-                })
-              ]
-            }),
-
-            new Paragraph(
-              missingKeywords.length
-                ? missingKeywords.join(", ")
-                : "No missing keywords."
-            ),
-
-            new Paragraph(""),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "Present Keywords",
-                  bold: true,
-                  size: 26
-                })
-              ]
-            }),
-
-            new Paragraph(
-              presentKeywords.length
-                ? presentKeywords.join(", ")
-                : "No present keywords detected."
-            ),
-
-            new Paragraph(""),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "AI Improved Summary",
-                  bold: true,
-                  size: 26
-                })
-              ]
-            }),
-
-            new Paragraph(improvedSummary || ""),
-
-            new Paragraph(""),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "AI Improved Bullet Points",
-                  bold: true,
-                  size: 26
-                })
-              ]
-            }),
-
-            ...(improvedBullets || []).map(
-              (b) => new Paragraph(`• ${b}`)
-            ),
-
-            new Paragraph(""),
-
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "Recommendations",
-                  bold: true,
-                  size: 26
-                })
-              ]
-            }),
-
-            ...(recommendations || []).map(
-              (r) => new Paragraph(`• ${r}`)
-            )
-          ]
-        }
-      ]
-    });
-
-    const blob = await Packer.toBlob(doc);
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "ATS_Report.docx";
-    a.click();
-
-    window.URL.revokeObjectURL(url);
   };
 
   // -----------------------------
@@ -222,7 +73,6 @@ const Dashboard = ({ resumeData }) => {
 
   const convertWordToPdf = async () => {
     if (!convertFile) return;
-
     const formData = new FormData();
     formData.append("file", convertFile);
 
@@ -233,19 +83,16 @@ const Dashboard = ({ resumeData }) => {
 
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download =
       convertFile.name.replace(/\.(doc|docx)$/i, "") + "_converted.pdf";
     a.click();
-
     window.URL.revokeObjectURL(url);
   };
 
   const convertPdfToWord = async () => {
     if (!convertFile) return;
-
     const formData = new FormData();
     formData.append("file", convertFile);
 
@@ -256,13 +103,11 @@ const Dashboard = ({ resumeData }) => {
 
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
     a.download =
       convertFile.name.replace(/\.pdf$/i, "") + "_converted.docx";
     a.click();
-
     window.URL.revokeObjectURL(url);
   };
 
@@ -271,10 +116,7 @@ const Dashboard = ({ resumeData }) => {
   // -----------------------------
   return (
     <Box sx={{ maxWidth: 1200, mx: "auto", px: 2, py: 4 }}>
-
-      {/* ============================
-          TOP ACTION BAR (NAVBAR AREA)
-         ============================ */}
+      {/* TOP ACTION BAR */}
       <Box
         sx={{
           display: "flex",
@@ -293,15 +135,6 @@ const Dashboard = ({ resumeData }) => {
             onClick={downloadPDF}
           >
             Download PDF
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<DownloadIcon />}
-            onClick={downloadWord}
-          >
-            Download Word (.docx)
           </Button>
         </Stack>
 
@@ -343,9 +176,7 @@ const Dashboard = ({ resumeData }) => {
         </Stack>
       </Box>
 
-      {/* ============================
-          ATS REPORT CONTENT
-         ============================ */}
+      {/* ATS REPORT CONTENT */}
       <Box id="ats-report" sx={{ p: 2, background: "white" }}>
         <Typography
           variant="h4"
@@ -354,9 +185,7 @@ const Dashboard = ({ resumeData }) => {
           Resume ATS Dashboard
         </Typography>
 
-        {/* -----------------------------
-            ATS SCORE + EXPERIENCE
-           ----------------------------- */}
+        {/* SCORE + EXPERIENCE */}
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
             <Card sx={{ p: 2, textAlign: "center" }}>
@@ -448,9 +277,7 @@ const Dashboard = ({ resumeData }) => {
           </Grid>
         </Grid>
 
-        {/* -----------------------------
-            KEYWORDS
-           ----------------------------- */}
+        {/* KEYWORDS */}
         <Grid container spacing={3} sx={{ mt: 2 }}>
           <Grid item xs={12} md={6}>
             <Card sx={{ p: 2 }}>
@@ -518,9 +345,7 @@ const Dashboard = ({ resumeData }) => {
           </Grid>
         </Grid>
 
-        {/* -----------------------------
-            AI IMPROVED SUMMARY + BULLETS
-           ----------------------------- */}
+        {/* AI SUMMARY + BULLETS */}
         <Grid container spacing={3} sx={{ mt: 2 }}>
           <Grid item xs={12} md={6}>
             <Card sx={{ p: 2, height: "100%" }}>
@@ -577,9 +402,7 @@ const Dashboard = ({ resumeData }) => {
           </Grid>
         </Grid>
 
-        {/* -----------------------------
-            RECOMMENDATIONS
-           ----------------------------- */}
+        {/* RECOMMENDATIONS */}
         <Box sx={{ mt: 3 }}>
           <Card sx={{ p: 2 }}>
             <Typography
