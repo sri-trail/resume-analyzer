@@ -35,6 +35,9 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DescriptionIcon from "@mui/icons-material/Description";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
+// ⭐ Load backend URL from .env
+const API_BASE = process.env.REACT_APP_API_URL;
+
 // ----------------------
 // Home Page
 // ----------------------
@@ -116,8 +119,9 @@ const App = ({ mode, toggleTheme }) => {
     const formData = new FormData();
     formData.append("file", file);
 
+    // ⭐ PDF → Word
     if (convertTypeRef.current === "pdf-to-word") {
-      await fetch("https://YOUR_BACKEND_URL/convert/pdf-to-word",  {
+      await fetch(`${API_BASE}/convert/pdf-to-word`, {
         method: "POST",
         body: formData
       })
@@ -131,8 +135,9 @@ const App = ({ mode, toggleTheme }) => {
         });
     }
 
+    // ⭐ Word → PDF
     if (convertTypeRef.current === "word-to-pdf") {
-      await fetch("https://YOUR_BACKEND_URL/convert/word-to-pdf", {
+      await fetch(`${API_BASE}/convert/word-to-pdf`, {
         method: "POST",
         body: formData
       })

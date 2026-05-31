@@ -2,7 +2,6 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const multer = require("multer");
 
 // ROUTES
 const analyzeRoute = require("./routes/analyze");
@@ -23,22 +22,11 @@ app.use((req, res, next) => {
 // PORT
 const port = process.env.PORT || 10000;
 
-// CORS
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "https://resume-analyzer-frontend.onrender.com"
-    ],
-    methods: ["GET", "POST"],
-  })
-);
+// ⭐ FIXED CORS — allow all (Render → Render)
+app.use(cors());
 
 // JSON parser
 app.use(express.json());
-
-// Multer (memory storage)
-const upload = multer({ storage: multer.memoryStorage() });
 
 // ------------------------------
 // HEALTH CHECK
@@ -61,13 +49,13 @@ app.use("/compare", compareRoute);
 app.use("/tailor-resume", tailorResumeRoute);
 app.use("/cover-letter", coverLetterRoute);
 
-// Extract text from resume (PDF/DOC/DOCX/TXT/IMG)
-app.use("/analyze", upload.single("resume"), analyzeRoute);
+// ⭐ FIXED — Multer is handled INSIDE analyze.js
+app.use("/analyze", analyzeRoute);
 
 // ATS analysis route (JSON only)
 app.use("/analyze-resume", analyzeResumeRoute);
 
-// ⭐ FIXED — NOW IN THE RIGHT PLACE
+// Convert routes
 app.use("/convert", convertRoute);
 
 // ------------------------------

@@ -14,7 +14,8 @@ const ResumeUpload = ({ onUpload }) => {
   const [popup, setPopup] = useState({ open: false, message: "", severity: "error" });
   const [loading, setLoading] = useState(false);
 
-  const API_BASE = "http://localhost:10000";
+  const API_BASE = process.env.REACT_APP_API_URL;
+
 
   const allowedTypes = [
     "application/pdf",
@@ -107,9 +108,10 @@ const ResumeUpload = ({ onUpload }) => {
         convertForm.append("file", file);
 
         const convertRes = await fetch(`${API_BASE}/convert/pdf-to-word`, {
-          method: "POST",
-          body: convertForm
-        });
+  method: "POST",
+  body: convertForm
+});
+
 
         if (!convertRes.ok) {
           throw new Error("PDF → Word conversion failed.");

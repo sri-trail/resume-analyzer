@@ -67,49 +67,54 @@ const Dashboard = ({ resumeData }) => {
   // -----------------------------
   // FILE CONVERTERS
   // -----------------------------
-  const handleConvertFileChange = (e) => {
-    setConvertFile(e.target.files[0] || null);
-  };
+  // Load backend URL from .env
+const API = process.env.REACT_APP_API_URL;
 
-  const convertWordToPdf = async () => {
-    if (!convertFile) return;
-    const formData = new FormData();
-    formData.append("file", convertFile);
+const handleConvertFileChange = (e) => {
+  setConvertFile(e.target.files[0] || null);
+};
 
-    const res = await fetch("http://localhost:10000/convert/word-to-pdf", {
-      method: "POST",
-      body: formData
-    });
+const convertWordToPdf = async () => {
+  if (!convertFile) return;
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download =
-      convertFile.name.replace(/\.(doc|docx)$/i, "") + "_converted.pdf";
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
+  const formData = new FormData();
+  formData.append("file", convertFile);
 
-  const convertPdfToWord = async () => {
-    if (!convertFile) return;
-    const formData = new FormData();
-    formData.append("file", convertFile);
+  const res = await fetch(`${API}/convert/word-to-pdf`, {
+    method: "POST",
+    body: formData
+  });
 
-    const res = await fetch("http://localhost:10000/convert/pdf-to-word", {
-      method: "POST",
-      body: formData
-    });
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download =
+    convertFile.name.replace(/\.(doc|docx)$/i, "") + "_converted.pdf";
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
 
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download =
-      convertFile.name.replace(/\.pdf$/i, "") + "_converted.docx";
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
+const convertPdfToWord = async () => {
+  if (!convertFile) return;
+
+  const formData = new FormData();
+  formData.append("file", convertFile);
+
+  const res = await fetch(`${API}/convert/pdf-to-word`, {
+    method: "POST",
+    body: formData
+  });
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download =
+    convertFile.name.replace(/\.pdf$/i, "") + "_converted.docx";
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
 
   // -----------------------------
   // RENDER UI
