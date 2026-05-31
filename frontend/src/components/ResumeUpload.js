@@ -16,7 +16,6 @@ const ResumeUpload = ({ onUpload }) => {
 
   const API_BASE = process.env.REACT_APP_API_URL;
 
-
   const allowedTypes = [
     "application/pdf",
     "application/msword",
@@ -79,7 +78,7 @@ const ResumeUpload = ({ onUpload }) => {
       if (extractRes.headers.get("content-type")?.includes("application/json")) {
         extractJson = JSON.parse(raw);
       } else {
-        throw new Error("Server returned non‑JSON response while extracting text.");
+        throw new Error("Server returned nonJSON response while extracting text.");
       }
 
       if (!extractRes.ok) {
@@ -101,17 +100,15 @@ const ResumeUpload = ({ onUpload }) => {
         throw new Error(atsJson?.error || "Failed to analyze resume.");
       }
 
-      // STEP 3: AI‑enhanced PDF → Word conversion (ONLY if PDF)
-      
+      // STEP 3: Optional PDF → Word conversion
       if (file.type === "application/pdf") {
         const convertForm = new FormData();
         convertForm.append("file", file);
 
         const convertRes = await fetch(`${API_BASE}/convert/pdf-to-word`, {
-  method: "POST",
-  body: convertForm
-});
-
+          method: "POST",
+          body: convertForm
+        });
 
         if (!convertRes.ok) {
           throw new Error("PDF → Word conversion failed.");
@@ -119,7 +116,6 @@ const ResumeUpload = ({ onUpload }) => {
 
         const blob = await convertRes.blob();
         const url = window.URL.createObjectURL(blob);
-
         const a = document.createElement("a");
         a.href = url;
         a.download = file.name.replace(".pdf", "_cleaned.docx");
@@ -133,8 +129,8 @@ const ResumeUpload = ({ onUpload }) => {
       });
 
       showPopup("Resume analyzed successfully!", "success");
-
       setFile(null);
+
       const input = document.getElementById("resume-upload");
       if (input) input.value = "";
 
@@ -180,10 +176,7 @@ const ResumeUpload = ({ onUpload }) => {
           style={{ display: "none" }}
         />
 
-        <Button
-          variant="outlined"
-          onClick={() => document.getElementById("resume-upload").click()}
-        >
+        <Button variant="outlined" onClick={() => document.getElementById("resume-upload").click()}>
           Choose File
         </Button>
 

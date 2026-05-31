@@ -1,11 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
 const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
 const Tesseract = require("tesseract.js");
 
+// ⭐ Multer MUST be defined here (not in server.js)
+const upload = multer({ storage: multer.memoryStorage() });
+
 // POST /analyze  (extract text from uploaded file)
-router.post("/", async (req, res) => {
+router.post("/", upload.single("resume"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file received" });
